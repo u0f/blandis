@@ -280,8 +280,9 @@ export class Game {
 
   tick(dt) {
     this.clock += dt;
-    const world = this.world, h = dt / SUB;
-    for (let s = 0; s < SUB; s++) world.step(h);
+    const sub = this.state === 'attract' ? 3 : SUB;
+    const world = this.world, h = dt / sub;
+    for (let s = 0; s < sub; s++) world.step(h);
 
     for (const b of world.blobs) {
       b.update(dt);

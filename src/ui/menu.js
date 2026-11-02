@@ -7,6 +7,9 @@ import { sfx, unlockAudio } from '../audio.js';
 import { fetchTop, submitScore, deleteScore, NAME_RE } from '../leaderboard.js';
 import { hasAnalytics, setAnalytics } from '../analytics.js';
 import { MODES, record, formatResult } from '../modes.js';
+import {
+  iconGlobe, iconTrophy, iconCrown, iconLock, iconShare, iconCheck, iconTrash, iconPalette
+} from '../icons.js';
 
 // Title of the game over screen for each Game#endReason.
 const END_TITLE = { overflow: 'over', time: 'timeUp', slow: 'tooSlow', shots: 'noShots', goal: 'goalDone' };
@@ -38,6 +41,10 @@ export class Menu {
     // Nickname inputs: Enter sends from the game-over screen, settings saves on change.
     this.overlay.addEventListener('keydown', e => { if (e.key === 'Enter') { if (e.target.id === 'lbName') this.sendName(); if (e.target.id === 'bgUrl') this.applyBg(); } });
     this.overlay.addEventListener('change', e => {
+      if (e.target.id === 'langSet') {
+        unlockAudio(); sfx.click(); setLang(e.target.value); unlock('polyglot');
+        this.refreshButtons(); this.show('settings', false); return;
+      }
       if (e.target.id !== 'nameSet') return;
       const n = e.target.value.trim();
       if (!n || NAME_RE.test(n)) { save.name = n; persist(); } else e.target.value = save.name;
@@ -71,8 +78,8 @@ export class Menu {
     }
     try {
       await navigator.clipboard.writeText(text);
-      button.textContent = `✅ ${t('copied')}`;
-      setTimeout(() => { button.textContent = `📤 ${t('share')}`; }, 2000);
+      button.innerHTML = `${iconCheck()} ${t('copied')}`;
+      setTimeout(() => { button.innerHTML = `${iconShare()} ${t('share')}`; }, 2000);
     } catch (e) {
       button.outerHTML = `<textarea class="shareText" readonly>${esc(text)}</textarea>`;
       this.card.querySelector('.shareText').select();
@@ -104,9 +111,9 @@ export class Menu {
       <button class="opt on" data-a="sendName">${t('send')}</button></div>
       <label class="check"><input type="checkbox" id="lbOk"><span>${t('joinTerms')(legalLink('terms', t('terms')), legalLink('privacy', t('privacyPolicy')))}</span></label>
       <p class="note">${t('publicNote')}</p>`;
-    if (s === 'sending') return `<p class="sub">🌍 ${t('sending')}</p>`;
-    if (s === 'error') return `<p class="sub">🌍 ${t('lbError')} <button class="opt on" data-a="send">${t('retry')}</button></p>`;
-    if (typeof s === 'number') return `<p class="sub">🌍 ${t('globalRank')}: <b>#${s}</b></p>`;
+    if (s === 'sending') return `<p class="sub">${iconGlobe('ico-sm')} ${t('sending')}</p>`;
+    if (s === 'error') return `<p class="sub">${iconGlobe('ico-sm')} ${t('lbError')} <button class="opt on" data-a="send">${t('retry')}</button></p>`;
+    if (typeof s === 'number') return `<p class="sub">${iconGlobe('ico-sm')} ${t('globalRank')}: <b>#${s}</b></p>`;
     return '';
   }
 
@@ -150,11 +157,11 @@ export class Menu {
   html(screen) {
     const g = this.game;
     const btn = (a, label, alt = true) => `<button class="big ${alt ? 'alt' : ''}" data-a="${a}">${label}</button>`;
-    const opt = (a, v, on, label) => `<button class="opt ${on ? 'on' : ''}" data-a="${a}" data-v="${v}">${label}</button>`;
+    const opt = (a, v, on, label, title) => `<button class="opt ${on ? 'on' : ''}" data-a="${a}" data-v="${v}"${title ? ` title="${title}"` : ''}>${label}</button>`;
     const best = `<p class="sub">${t('best')}: <b>${save.best}</b></p>`;
     const back = btn('back', t('back'), false);
-    const achBtn = btn('ach', `🏆 ${t('ach')} ${unlockedCount()}/${ACHIEVEMENTS.length}`);
-    const lbBtn = btn('lb', `🌍 ${t('globalTop')}`);
+    const achBtn = btn('ach', `${iconTrophy()} ${t('ach')} ${unlockedCount()}/${ACHIEVEMENTS.length}`);
+    const lbBtn = btn('lb', `${iconGlobe()} ${t('globalTop')}`);
 
     switch (screen) {
       case 'start':
@@ -183,25 +190,26 @@ export class Menu {
           ${g.isNewBest && g.result > 0 ? `<span class="badge">${t('newBest')}</span>` : rec.best ? `<p class="sub">${t('best')}: <b>${fmt(rec.best)}</b></p>` : ''}
           <ol>${rec.top.map(v => `<li>${fmt(v)}</li>`).join('')}</ol>
           <div id="lbLine">${this.lbLine()}</div>
-          ${btn('play', t('again'), false)}${g.score ? btn('share', `📤 ${t('share')}`) : ''}${lbBtn}${btn('modes', t('modes'))}${btn('menu', t('mainMenu'))}`;
+          ${btn('play', t('again'), false)}${g.score ? btn('share', `${iconShare()} ${t('share')}`) : ''}${lbBtn}${btn('modes', t('modes'))}${btn('menu', t('mainMenu'))}`;
       }
       case 'lb':
-        return `<h2>🌍 ${t('globalTop')}</h2>
-          <div class="tabs">${Object.entries(MODES).map(([id, m]) => opt('lbMode', id, this.lbMode === id, m.icon)).join('')}</div>
+        return `<h2>${iconGlobe()} ${t('globalTop')}</h2>
+          <div class="tabs">${Object.entries(MODES).map(([id, m]) => opt('lbMode', id, this.lbMode === id, m.icon, tx(m.name))).join('')}</div>
           <p class="sub">${tx(MODES[this.lbMode].name)}</p><div id="lbList"><p class="sub">${t('loading')}</p></div>${back}`;
       case 'settings':
         return `<h2>${t('settings')}</h2>
-          <div class="row"><b>${t('language')}</b><div>${Object.entries(LANGS).map(([id, name]) => opt('lang', id, save.lang === id, name)).join('')}</div></div>
+          <div class="row"><b>${t('language')}</b><select id="langSet">${Object.entries(LANGS).map(([id, name]) =>
+            `<option value="${id}" lang="${id}" ${save.lang === id ? 'selected' : ''}>${name}</option>`).join('')}</select></div>
           <div class="row"><b>${t('sound')}</b><div>${opt('sound', 'on', !save.muted, t('on'))}${opt('sound', 'off', save.muted, t('off'))}</div></div>
           ${hasAnalytics ? `<div class="row"><b>${t('analytics')}</b><div>${opt('ga', 'on', save.ga, t('on'))}${opt('ga', 'off', !save.ga, t('off'))}</div></div>` : ''}
           <div class="row"><b>${t('name')}</b><input id="nameSet" maxlength="16" value="${esc(save.name)}" placeholder="${t('yourName')}" autocomplete="nickname"></div>
           <p class="note">${t('publicNote')} ${legalLink('privacy', t('privacy'))}</p>
-          ${save.pid ? btn('delMine', `🗑 ${this.confirmDel ? t('delConfirm') : t('delMine')}`) : ''}
+          ${save.pid ? btn('delMine', `${iconTrash()} ${this.confirmDel ? t('delConfirm') : t('delMine')}`) : ''}
           ${this.delMsg ? `<p class="note">${this.delMsg}</p>` : ''}
           <div class="row"><input id="bgUrl" type="url" value="${esc(this.bgErr || save.bg)}" placeholder="${t('bgUrl')}" autocomplete="off">
             <button class="opt on" data-a="bgSet">${t('apply')}</button></div>
           ${this.bgErr ? `<p class="warn">${t('bgError')}</p>` : ''}
-          ${save.bg ? btn('bgDel', `🗑 ${t('bgDel')}`) : ''}
+          ${save.bg ? btn('bgDel', `${iconTrash()} ${t('bgDel')}`) : ''}
           ${btn('styles', t('styles'))}${back}`;
       case 'styles':
         return `<h2>${t('styles')}</h2><div class="grid">${Object.entries(THEMES).map(([id, th]) => {
@@ -209,7 +217,7 @@ export class Menu {
           const dots = [0, 2, 4, 6, 8].map(l => `<i style="background:${hsl(th.col(l, l * 0.4))}"></i>`).join('');
           return `<button class="sw ${save.theme === id ? 'on' : ''}" data-a="theme" data-v="${id}" ${ok ? '' : 'disabled'}
             style="background:linear-gradient(${th.bg[0]},${th.bg[1]});color:${th.ink}">
-            <div class="dots">${dots}</div>${ok ? '' : '🔒 '}${tx(th.name)}${ok || !a ? '' : `<small>${tx(a.desc)}</small>`}</button>`;
+            <div class="dots">${dots}</div>${ok ? '' : iconLock('ico-sm') + ' '}${tx(th.name)}${ok || !a ? '' : `<small>${tx(a.desc)}</small>`}</button>`;
         }).join('')}</div>${back}`;
       case 'ach':
         return `<h2>${t('ach')}</h2>
@@ -217,8 +225,8 @@ export class Menu {
           <p class="sub">${unlockedCount()} / ${ACHIEVEMENTS.length}</p>
           ${ACHIEVEMENTS.map(a => {
             const ok = save.ach.includes(a.id);
-            const reward = a.theme ? ` · 🎨 ${tx(THEMES[a.theme].name)}` : '';
-            return `<div class="ach ${ok ? '' : 'lock'}"><div class="ic">${ok ? a.icon : '🔒'}</div>
+            const reward = a.theme ? ` · ${iconPalette('ico-sm')} ${tx(THEMES[a.theme].name)}` : '';
+            return `<div class="ach ${ok ? '' : 'lock'}"><div class="ic">${ok ? a.icon : iconLock()}</div>
               <div><b>${tx(a.name)}</b><span>${tx(a.desc)}${reward}</span></div></div>`;
           }).join('')}${back}`;
       case 'help':
@@ -254,9 +262,6 @@ export class Menu {
       case 'share': this.share(el); break;
       case 'sendName': this.sendName(); break;
       case 'back': this.show(this.screen === 'styles' ? 'settings' : this.base); break;
-      case 'lang':
-        if (v !== save.lang) { setLang(v); unlock('polyglot'); }
-        this.refreshButtons(); this.show('settings', false); break;
       case 'sound': save.muted = v === 'off'; persist(); this.refreshButtons(); this.show('settings', false); break;
       case 'ga': setAnalytics(v === 'on'); this.show('settings', false); break;
       case 'theme':

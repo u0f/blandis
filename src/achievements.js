@@ -3,13 +3,14 @@ import { t, tx, addLangs } from './i18n.js';
 import { THEMES } from './themes.js';
 import { sfx } from './audio.js';
 import { toast } from './ui/toast.js';
+import { achIcon } from './icons.js';
 
 // `test(c)` gets a snapshot from Game#context():
 //   mode, end (why the run ended, '' while playing), score, time, maxLevel, maxCombo, merges, launches, hardLaunches,
 //   gentleRun, blobs, lastMergeAt, flags { cannon, bank, feather, closeCall, supreme, edge, lastShot },
 //   bests { [mode]: best }, life { games, merges, launches, playTime, played }
 // Achievements with a `theme` unlock that color style. Ones without `test` are unlocked directly.
-const A = (id, icon, en, es, den, des, test, theme) => ({ id, icon, name: { en, es }, desc: { en: den, es: des }, test, theme });
+const A = (id, icon, en, es, den, des, test, theme) => ({ id, icon: achIcon(id), name: { en, es }, desc: { en: den, es: des }, test, theme });
 
 export const ACHIEVEMENTS = [
   // Merging up

@@ -5,6 +5,7 @@ import { save } from '../storage.js';
 import { t, tx } from '../i18n.js';
 import { fetchTop, TOP_N } from '../leaderboard.js';
 import { MODES, formatResult } from '../modes.js';
+import { iconGlobe, iconCrown } from '../icons.js';
 
 const ROW = 34, VISIBLE = 9, WIDTH = 260, GAP = 32;
 const esc = s => String(s).replace(/[&<>"']/g, c => `&#${c.charCodeAt(0)};`);
@@ -48,10 +49,10 @@ export class Sidebar {
   build() {
     const m = MODES[this.mode];
     const head = this.browsing
-      ? `<h2>🌍 ${t('globalTop')}</h2><div class="tabs">${Object.entries(MODES).map(([id, o]) =>
+      ? `<h2>${iconGlobe()} ${t('globalTop')}</h2><div class="tabs">${Object.entries(MODES).map(([id, o]) =>
         `<button class="opt ${id === this.mode ? 'on' : ''}" data-v="${id}" title="${tx(o.name)}">${o.icon}</button>`).join('')}</div>
         <p class="lbs-mode">${tx(m.name)}</p>`
-      : `<h2>🌍 ${t('globalTop')} · ${m.icon}</h2>`;
+      : `<h2>${iconGlobe()} ${t('globalTop')} · ${m.icon}</h2>`;
     this.el.innerHTML = `${head}
       <div class="lbs-view" style="height:${ROW * VISIBLE}px"><div class="lbs-list"></div></div>
       <div class="lbs-foot"></div>`;
@@ -97,7 +98,7 @@ export class Sidebar {
     if (live) {
       this.me.style.transform = `translateY(${(rank - 1) * ROW}px)`;
       // Below a full top the real rank is unknown: only that it's outside it.
-      this.me.firstChild.textContent = rank === 1 ? '👑' : rank > TOP_N ? TOP_N + '+' : rank;
+      this.me.firstChild.innerHTML = rank === 1 ? iconCrown('ico-sm') : (rank > TOP_N ? TOP_N + '+' : rank);
       this.me.lastChild.textContent = g.score;
       if (passed) { this.me.dataset.up = '▲' + passed; this.flash(this.me, 'up'); }
     }

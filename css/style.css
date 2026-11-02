@@ -42,7 +42,7 @@ canvas { position:absolute; inset:0; width:100%; height:100%; display:block; dir
 
 /* Menu overlay */
 #overlay { position:absolute; inset:0; display:grid; place-items:center; background:rgba(70,50,35,.3);
-  backdrop-filter:blur(3px); z-index:5; padding:16px; }
+  z-index:5; padding:16px; }
 #overlay.hide { display:none; }
 .card { background:var(--card); color:var(--ink); border-radius:28px; padding:26px 24px; width:min(380px,100%);
   max-height:calc(100% - 32px); overflow:auto; text-align:center;
@@ -73,7 +73,16 @@ ol { text-align:start; margin:12px auto; padding-inline-start:28px; max-width:22
 .ach { display:flex; align-items:center; gap:12px; text-align:start; padding:10px; border-radius:16px; background:var(--soft); margin-bottom:8px; }
 .ach b { display:block; }
 .ach span { font-size:13px; opacity:.8; }
-.ach .ic { font-size:22px; width:30px; text-align:center; }
+.ach .ic { font-size:22px; width:30px; text-align:center; display:flex; align-items:center; justify-content:center; }
+.ach .ic .ico { width:24px; height:24px; margin-inline-end:0; vertical-align:middle; color:var(--accent); }
+.ach.lock .ic .ico { color:inherit; opacity:.6; }
+
+/* Inline SVG icons */
+.ico { display:inline-block; vertical-align:-0.18em; margin-inline-end:8px; width:1.15em; height:1.15em;
+  fill:none; stroke:currentColor; stroke-width:2.2; stroke-linecap:round; stroke-linejoin:round; }
+.ico-sm { width:1em; height:1em; margin-inline-end:5px; }
+.tabs .opt .ico, .tab .ico { margin-inline-end:0; width:1.1em; height:1.1em; vertical-align:-0.15em; }
+h2 .ico { width:1em; height:1em; vertical-align:-0.15em; margin-inline-end:6px; }
 .ach.mode { width:100%; font:inherit; color:inherit; border:3px solid transparent; cursor:pointer; }
 .ach.mode.on { border-color:var(--accent); }
 .ach.lock { opacity:.5; }
@@ -90,9 +99,10 @@ ol { text-align:start; margin:12px auto; padding-inline-start:28px; max-width:22
 .tabs { display:flex; justify-content:center; gap:4px; padding:4px; border-radius:14px; background:var(--soft); }
 .tabs .opt { flex:1; font-size:18px; padding:6px 0; }
 
-.card input { flex:1; min-width:0; font:inherit; font-weight:800; font-size:15px; padding:8px 12px; border-radius:12px;
+.card input, .card select { flex:1; min-width:0; font:inherit; font-weight:800; font-size:15px; padding:8px 12px; border-radius:12px;
   border:2px solid var(--soft-dk); background:#fff; color:var(--ink); user-select:text; -webkit-user-select:text; }
-.card input:focus { outline:none; border-color:var(--accent); }
+.card select { flex:0 1 auto; cursor:pointer; }
+.card input:focus, .card select:focus { outline:none; border-color:var(--accent); }
 .card input.bad { border-color:#c0392b; }
 .sub .opt { margin-inline-start:6px; }
 .note { margin:4px 0 10px; font-size:12px; font-weight:600; opacity:.8; line-height:1.4; }
@@ -172,6 +182,7 @@ ol.lb li.me { color:var(--accent); }
   transition:transform .45s cubic-bezier(.3,1.6,.5,1); text-align:center; max-width:90vw; }
 #toast.show { transform:translate(-50%,0); }
 #toast small { display:block; font-weight:600; opacity:.75; }
+#toast .ico { width:1.25em; height:1.25em; vertical-align:-0.2em; margin-inline-end:6px; color:var(--accent); }
 
 @media (prefers-reduced-motion: reduce) {
   .card, #toast, .lbs-list, .lbs-row, .lbs-row::after { animation:none; transition:none; }

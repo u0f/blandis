@@ -11,10 +11,47 @@ const LINE = '#0b0a09';
 const LIGHT = '#fff6ea';
 const FONT = 'Nunito, system-ui, sans-serif';
 
+function drawHudTimer(ctx, cx, cy) {
+  ctx.save();
+  ctx.lineWidth = 2.4; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.arc(cx, cy + 1, 7.5, 0, Math.PI * 2); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(cx - 3, cy - 8.5); ctx.lineTo(cx + 3, cy - 8.5); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(cx, cy - 6.5); ctx.lineTo(cx, cy - 8.5); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(cx, cy + 1); ctx.lineTo(cx, cy - 3); ctx.lineTo(cx + 2.5, cy - 1); ctx.stroke();
+  ctx.restore();
+}
+
+function drawHudTarget(ctx, cx, cy) {
+  ctx.save();
+  ctx.lineWidth = 2.4;
+  ctx.beginPath(); ctx.arc(cx, cy, 9, 0, Math.PI * 2); ctx.stroke();
+  ctx.beginPath(); ctx.arc(cx, cy, 5, 0, Math.PI * 2); ctx.stroke();
+  ctx.beginPath(); ctx.arc(cx, cy, 1.8, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
+}
+
+function drawHudLightning(ctx, cx, cy) {
+  ctx.save();
+  ctx.beginPath();
+  ctx.moveTo(cx + 1, cy - 9);
+  ctx.lineTo(cx - 6, cy + 1);
+  ctx.lineTo(cx - 0.5, cy + 1);
+  ctx.lineTo(cx - 1.5, cy + 9);
+  ctx.lineTo(cx + 6, cy - 1);
+  ctx.lineTo(cx + 0.5, cy - 1);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+}
+
 export class Renderer {
   constructor(canvas, game) {
     this.cv = canvas;
-    this.ctx = canvas.getContext('2d');
+    this.mainCtx = canvas.getContext('2d');
+    this.ctx = this.mainCtx;
+    this.bgCv = document.createElement('canvas');
+    this.bgCtx = this.bgCv.getContext('2d');
+    this.bgScale = 0.35;
     this.game = game;
     this.view = { s: 1, ox: 0, oy: 0, dpr: 1 };
     this.shownScore = 0;
@@ -24,9 +61,11 @@ export class Renderer {
 
   resize() {
     const dpr = Math.min(2, window.devicePixelRatio || 1), w = this.cv.clientWidth, h = this.cv.clientHeight;
-    this.cv.width = w * dpr; this.cv.height = h * dpr;
+    this.cv.width = Math.round(w * dpr); this.cv.height = Math.round(h * dpr);
     const s = Math.min(w / W, h / H);
     this.view = { s, dpr, ox: (w - W * s) / 2, oy: (h - H * s) / 2 };
+    this.bgCv.width = Math.max(1, Math.round(w * this.bgScale));
+    this.bgCv.height = Math.max(1, Math.round(h * this.bgScale));
   }
 
   /** Screen (CSS px) -> world coordinates. */
@@ -36,18 +75,26 @@ export class Renderer {
   }
 
   draw() {
-    const { ctx, game } = this, { s, dpr, ox, oy } = this.view, fx = game.fx;
+    const { game, mainCtx } = this, { s, dpr, ox, oy } = this.view, fx = game.fx;
+    // Behind the menu the jar is drawn into a small buffer and scaled up: cheaper, and the softness reads as a backdrop.
+    const attract = game.state === 'attract', ctx = this.ctx = attract ? this.bgCtx : mainCtx, k = attract ? this.bgScale : dpr;
     ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.clearRect(0, 0, this.cv.width, this.cv.height);
+    ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
     const shx = (Math.random() - 0.5) * fx.shake, shy = (Math.random() - 0.5) * fx.shake;
-    ctx.setTransform(dpr * s, 0, 0, dpr * s, dpr * (ox + shx * s), dpr * (oy + shy * s));
+    ctx.setTransform(k * s, 0, 0, k * s, k * (ox + shx * s), k * (oy + shy * s));
 
     this.drawJar();
-    if (game.state !== 'attract') this.drawTray();
+    if (!attract) this.drawTray();
     for (const b of game.world.blobs) this.drawBody(b.px, b.py, b.n, b.level, b.cx, b.cy, b.r * b.scale, b.happy > 0);
     this.drawAim();
     this.drawEffects();
-    if (game.state !== 'attract') this.drawHud();
+    if (!attract) this.drawHud();
+
+    if (attract) {
+      mainCtx.setTransform(1, 0, 0, 1, 0, 0);
+      mainCtx.clearRect(0, 0, this.cv.width, this.cv.height);
+      mainCtx.drawImage(this.bgCv, 0, 0, this.cv.width, this.cv.height);
+    }
   }
 
   drawJar() {
@@ -135,26 +182,43 @@ export class Renderer {
     const m = game.rules, best = record(game.mode).best;
     // Mode being played, centred at the top (nudged right if a long score would reach it).
     const scoreEnd = WALL_L + ctx.measureText(Math.round(this.shownScore)).width;
-    const title = `${m.icon} ${tx(m.name)}`;
+    const title = tx(m.name);
     ctx.font = `900 22px ${FONT}`; ctx.globalAlpha = 0.75;
-    ctx.fillText(title, Math.max(W / 2 - ctx.measureText(title).width / 2, scoreEnd + 20), 32);
+    ctx.textAlign = 'center';
+    ctx.fillText(title, Math.max(W / 2, scoreEnd + ctx.measureText(title).width / 2 + 20), 32);
+
     // Second line: the mode's best on the left; time (or time left) on the right.
     ctx.globalAlpha = 0.6; ctx.font = `800 20px ${FONT}`;
-    ctx.fillText(`${m.icon} ${t('best')} ${m.byTime ? (best ? formatResult(game.mode, best) : '-') : Math.max(best, game.score)}`, WALL_L + 2, 94);
+    ctx.textAlign = 'left';
+    ctx.fillText(`${t('best')}: ${m.byTime ? (best ? formatResult(game.mode, best) : '-') : Math.max(best, game.score)}`, WALL_L + 2, 94);
+
+    const timeStr = m.limit ? formatTime(Math.ceil(Math.max(0, m.limit - game.time))) : formatTime(game.time);
     ctx.textAlign = 'right';
-    ctx.fillText(m.limit ? `⏱️ ${formatTime(Math.ceil(Math.max(0, m.limit - game.time)))}`
-      : t('time') + ' ' + formatTime(game.time), WALL_R, 94);
+    ctx.fillText(timeStr, WALL_R, 94);
+    const tw = ctx.measureText(timeStr).width;
+    ctx.strokeStyle = ink;
+    drawHudTimer(ctx, WALL_R - tw - 13, 86);
     ctx.textAlign = 'center'; ctx.globalAlpha = 1;
+
     // Shots mode: launches used out of the total, red near the end.
     if (m.shots) {
       const left = Math.max(0, game.shotsLeft);
-      ctx.fillStyle = left <= 5 ? '#ff3c5a' : ink; ctx.font = `900 30px ${FONT}`;
-      ctx.fillText(`🎯 ${m.shots - left}/${m.shots}`, W / 2, 94);
+      const shotsCol = left <= 5 ? '#ff3c5a' : ink;
+      const str = `${m.shots - left}/${m.shots}`;
+      ctx.fillStyle = ctx.strokeStyle = shotsCol; ctx.font = `900 30px ${FONT}`;
+      ctx.textAlign = 'center';
+      const sw = ctx.measureText(str).width;
+      ctx.fillText(str, W / 2 + 10, 94);
+      drawHudTarget(ctx, W / 2 - sw / 2 - 4, 84);
     }
     // Speedrun: countdown while the tray is full.
     if (m.trayTimer && game.trayT > 0 && game.state === 'play') {
-      ctx.fillStyle = '#ff3c5a'; ctx.font = `900 26px ${FONT}`;
-      ctx.fillText(`⚡ ${Math.max(0, m.trayTimer - game.trayT).toFixed(1)}`, W / 2, 94);
+      const str = Math.max(0, m.trayTimer - game.trayT).toFixed(1);
+      ctx.fillStyle = ctx.strokeStyle = '#ff3c5a'; ctx.font = `900 26px ${FONT}`;
+      ctx.textAlign = 'center';
+      const lw = ctx.measureText(str).width;
+      ctx.fillText(str, W / 2 + 9, 94);
+      drawHudLightning(ctx, W / 2 - lw / 2 - 3, 85);
     }
 
     // Evolution chain under the jar
